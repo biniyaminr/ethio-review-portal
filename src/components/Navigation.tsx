@@ -1,11 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, MapPin, Star, ShieldCheck, TrendingUp, Globe, Menu, X, User } from 'lucide-react';
+import { Star, ShieldCheck, TrendingUp, Globe, Menu, X, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { supabase } from '../lib/supabaseClient';
+import { SearchBar } from './SearchBar';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -149,14 +150,6 @@ export const Navbar = () => {
 
 export const Hero = () => {
   const { t } = useTranslation();
-  
-  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const query = formData.get('query');
-    const location = formData.get('location');
-    console.log('Search inputs:', { query, location });
-  };
 
   return (
     <section className="relative pt-32 pb-20 overflow-hidden">
@@ -186,35 +179,13 @@ export const Hero = () => {
           {t('hero_subtitle')}
         </motion.p>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="max-w-3xl mx-auto"
         >
-          <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-100">
-            <div className="flex-1 flex items-center px-4 py-3 md:py-0 border-b md:border-b-0 md:border-r border-gray-100">
-              <Search className="text-gray-400 w-5 h-5 mr-3" />
-              <input 
-                name="query"
-                type="text" 
-                placeholder={t('search_placeholder')}
-                className="w-full outline-none text-gray-900 placeholder-gray-400"
-              />
-            </div>
-            <div className="flex-1 flex items-center px-4 py-3 md:py-0">
-              <MapPin className="text-gray-400 w-5 h-5 mr-3" />
-              <input 
-                name="location"
-                type="text" 
-                placeholder="Addis Ababa, Ethiopia"
-                className="w-full outline-none text-gray-900 placeholder-gray-400"
-              />
-            </div>
-            <button type="submit" className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20">
-              Search
-            </button>
-          </form>
+          <SearchBar placeholder={t('search_placeholder') || 'Search a company or category…'} />
         </motion.div>
 
         <div className="mt-12 flex flex-wrap justify-center gap-8 text-gray-400">
