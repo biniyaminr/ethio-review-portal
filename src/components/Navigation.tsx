@@ -1,9 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, MapPin, Star, ShieldCheck, TrendingUp, Globe, Menu, X, User } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { supabase } from '../lib/supabaseClient';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -11,7 +13,26 @@ function cn(...inputs: ClassValue[]) {
 
 export const Navbar = () => {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check initial session
+    supabase.auth.getSession().then(({ data }) => {
+      setIsLoggedIn(!!data.session);
+    });
+    // Listen for auth changes (login / logout)
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === 'en' ? 'am' : 'en');
@@ -29,7 +50,7 @@ export const Navbar = () => {
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <a href="#" className="text-sm font-medium text-gray-600 hover:text-green-600 transition-colors">{t('categories')}</a>
+            <Link to="/categories" className="text-sm font-medium text-gray-600 hover:text-green-600 transition-colors">{t('categories')}</Link>
             <a href="#" className="text-sm font-medium text-gray-600 hover:text-green-600 transition-colors">{t('claim_business')}</a>
             <button 
               onClick={toggleLanguage}
@@ -39,8 +60,35 @@ export const Navbar = () => {
               {i18n.language === 'en' ? 'አማርኛ' : 'English'}
             </button>
             <div className="flex items-center gap-4">
-              <button className="text-sm font-semibold text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">{t('auth.login')}</button>
-              <button className="text-sm font-semibold text-white bg-green-600 px-6 py-2.5 rounded-lg hover:bg-green-700 transition-shadow shadow-md">{t('auth.signup')}</button>
+              {isLoggedIn ? (
+                <>
+                  <Link
+                    to="/dashboard"
+                    id="nav-my-profile"
+                    className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-green-700 px-4 py-2 rounded-lg hover:bg-green-50 transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-green-600 flex items-center justify-center">
+                      <User className="text-white w-4 h-4" />
+                    </div>
+                    My Profile
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="text-sm font-semibold text-red-500 px-4 py-2 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login">
+                    <button className="text-sm font-semibold text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">{t('auth.login')}</button>
+                  </Link>
+                  <Link to="/signup">
+                    <button className="text-sm font-semibold text-white bg-green-600 px-6 py-2.5 rounded-lg hover:bg-green-700 transition-shadow shadow-md">{t('auth.signup')}</button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 
@@ -64,11 +112,33 @@ export const Navbar = () => {
             className="md:hidden bg-white border-b border-gray-100 overflow-hidden"
           >
             <div className="px-4 py-6 space-y-4">
-              <a href="#" className="block text-lg font-medium text-gray-700">{t('categories')}</a>
+              <Link to="/categories" className="block text-lg font-medium text-gray-700">{t('categories')}</Link>
               <a href="#" className="block text-lg font-medium text-gray-700">{t('claim_business')}</a>
               <hr />
-              <button className="w-full text-center py-3 font-semibold text-gray-900 border border-gray-200 rounded-xl">{t('auth.login')}</button>
-              <button className="w-full text-center py-3 font-semibold text-white bg-green-600 rounded-xl">{t('auth.signup')}</button>
+              {isLoggedIn ? (
+                <>
+                  <Link to="/dashboard" className="block" onClick={() => setIsOpen(false)}>
+                    <button className="w-full text-center py-3 font-semibold text-gray-900 border border-gray-200 rounded-xl flex items-center justify-center gap-2">
+                      <User className="w-4 h-4" /> My Profile
+                    </button>
+                  </Link>
+                  <button
+                    onClick={() => { handleSignOut(); setIsOpen(false); }}
+                    className="w-full text-center py-3 font-semibold text-red-500 border border-red-100 rounded-xl"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="block">
+                    <button className="w-full text-center py-3 font-semibold text-gray-900 border border-gray-200 rounded-xl">{t('auth.login')}</button>
+                  </Link>
+                  <Link to="/signup" className="block">
+                    <button className="w-full text-center py-3 font-semibold text-white bg-green-600 rounded-xl">{t('auth.signup')}</button>
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
         )}
@@ -79,6 +149,15 @@ export const Navbar = () => {
 
 export const Hero = () => {
   const { t } = useTranslation();
+  
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const query = formData.get('query');
+    const location = formData.get('location');
+    console.log('Search inputs:', { query, location });
+  };
+
   return (
     <section className="relative pt-32 pb-20 overflow-hidden">
       <div className="absolute inset-0 z-0">
@@ -113,10 +192,11 @@ export const Hero = () => {
           transition={{ delay: 0.2 }}
           className="max-w-3xl mx-auto"
         >
-          <div className="flex flex-col md:flex-row gap-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-100">
+          <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-2 bg-white p-2 rounded-2xl shadow-xl border border-gray-100">
             <div className="flex-1 flex items-center px-4 py-3 md:py-0 border-b md:border-b-0 md:border-r border-gray-100">
               <Search className="text-gray-400 w-5 h-5 mr-3" />
               <input 
+                name="query"
                 type="text" 
                 placeholder={t('search_placeholder')}
                 className="w-full outline-none text-gray-900 placeholder-gray-400"
@@ -125,15 +205,16 @@ export const Hero = () => {
             <div className="flex-1 flex items-center px-4 py-3 md:py-0">
               <MapPin className="text-gray-400 w-5 h-5 mr-3" />
               <input 
+                name="location"
                 type="text" 
                 placeholder="Addis Ababa, Ethiopia"
                 className="w-full outline-none text-gray-900 placeholder-gray-400"
               />
             </div>
-            <button className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20">
+            <button type="submit" className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20">
               Search
             </button>
-          </div>
+          </form>
         </motion.div>
 
         <div className="mt-12 flex flex-wrap justify-center gap-8 text-gray-400">

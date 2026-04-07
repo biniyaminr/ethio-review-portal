@@ -6,6 +6,7 @@ import { SignUp } from './pages/SignUp';
 import { BusinessProfile } from './pages/BusinessProfile';
 import { WriteReview } from './pages/WriteReview';
 import { SearchResults } from './pages/SearchResults';
+import { UserDashboard } from './pages/UserDashboard';
 import './lib/i18n';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
       <Route path="/business/:id/write-review" element={<WriteReview />} />
       <Route path="/categories/:category" element={<SearchResults />} />
       <Route path="/search" element={<SearchResults />} />
+      <Route path="/dashboard" element={<UserDashboard />} />
     </Routes>
   );
 }
