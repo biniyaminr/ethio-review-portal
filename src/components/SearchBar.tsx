@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, TrendingUp, Clock, ArrowUpRight } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Suggestion {
@@ -10,23 +11,6 @@ interface Suggestion {
   id: string | null;
 }
 
-// ─── Mock Suggestions ─────────────────────────────────────────────────────────
-const MOCK_SUGGESTIONS: Suggestion[] = [
-  // Businesses
-  { type: 'business', label: 'Commercial Bank of Ethiopia', meta: 'Banking & Finance', id: 'commercial-bank-of-ethiopia' },
-  { type: 'business', label: 'Awash Bank', meta: 'Banking & Finance', id: 'awash-bank' },
-  { type: 'business', label: 'Tomoca Coffee', meta: 'Cafes & Coffee', id: 'tomoca-coffee' },
-  { type: 'business', label: "Kaldi's Coffee", meta: 'Cafes & Coffee', id: 'kaldi-coffee' },
-  { type: 'business', label: 'Sunshine Real Estate', meta: 'Real Estate', id: 'sunshine-real-estate' },
-  { type: 'business', label: 'Habesha Cultural Dress', meta: 'Traditional Dress', id: 'habesha-cultural-dress' },
-  // Categories / topics
-  { type: 'search', label: 'Banks in Addis Ababa', meta: 'Category', id: null },
-  { type: 'search', label: 'Best Coffee Shops', meta: 'Category', id: null },
-  { type: 'search', label: 'Real Estate Addis Ababa', meta: 'Category', id: null },
-  { type: 'search', label: 'Traditional dress shops', meta: 'Category', id: null },
-  { type: 'search', label: 'Mobile banking Ethiopia', meta: 'Topic', id: null },
-  { type: 'search', label: 'Top rated restaurants', meta: 'Topic', id: null },
-];
 
 const TRENDING = [
   'Commercial Bank of Ethiopia',
@@ -54,17 +38,49 @@ export function SearchBar({ placeholder = 'Search a company or category…', com
   const containerRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Filter suggestions as user types ────────────────────────────────────────
+  // ── Filter suggestions as user types (Live DB Query) ────────────────────────
   useEffect(() => {
     if (query.trim() === '') {
       setFilteredSuggestions([]);
-    } else {
-      const q = query.toLowerCase();
-      setFilteredSuggestions(
-        MOCK_SUGGESTIONS.filter((s) => s.label.toLowerCase().includes(q)).slice(0, 7)
-      );
+      setActiveIndex(-1);
+      return;
     }
-    setActiveIndex(-1);
+
+    const fetchSuggestions = async () => {
+      if (query.trim().length <= 1) {
+        setFilteredSuggestions([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('id, name, category')
+        .ilike('name', `%${query}%`)
+        .limit(5);
+
+      if (error) {
+        console.error('Error fetching suggestions:', error.message);
+        return;
+      }
+
+      if (data) {
+        const results = data.map((b) => ({
+          type: 'business' as const,
+          label: b.name,
+          meta: b.category,
+          id: b.id,
+        }));
+        setFilteredSuggestions(results);
+      }
+      setActiveIndex(-1);
+    };
+
+    // Debounce to prevent rapid DB querying
+    const debounceId = setTimeout(() => {
+      fetchSuggestions();
+    }, 300);
+
+    return () => clearTimeout(debounceId);
   }, [query]);
 
   // ── Close dropdown when clicking outside ────────────────────────────────────
