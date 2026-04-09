@@ -52,7 +52,7 @@ export const Navbar = () => {
 
           <div className="hidden md:flex items-center gap-8">
             <Link to="/categories" className="text-sm font-medium text-gray-600 hover:text-green-600 transition-colors">{t('categories')}</Link>
-            <a href="#" className="text-sm font-medium text-gray-600 hover:text-green-600 transition-colors">{t('claim_business')}</a>
+            <Link to="/claim-business" className="text-sm font-medium text-gray-600 hover:text-green-600 transition-colors">{t('claim_business')}</Link>
             <button 
               onClick={toggleLanguage}
               className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-green-600 transition-colors"
@@ -114,7 +114,7 @@ export const Navbar = () => {
           >
             <div className="px-4 py-6 space-y-4">
               <Link to="/categories" className="block text-lg font-medium text-gray-700">{t('categories')}</Link>
-              <a href="#" className="block text-lg font-medium text-gray-700">{t('claim_business')}</a>
+              <Link to="/claim-business" onClick={() => setIsOpen(false)} className="block text-lg font-medium text-gray-700">{t('claim_business')}</Link>
               <hr />
               {isLoggedIn ? (
                 <>

@@ -121,9 +121,9 @@ export const Home = () => {
               <div className="max-w-xl">
                 <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Are you a business owner?</h2>
                 <p className="text-gray-400 text-lg mb-8">Claim your profile to engage with customers, respond to reviews, and build your reputation in the Ethiopian market.</p>
-                <button className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-700 transition-shadow shadow-lg shadow-green-600/20">
+                <Link to="/claim-business" className="inline-block bg-green-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-700 transition-shadow shadow-lg shadow-green-600/20">
                   {t('claim_business')}
-                </button>
+                </Link>
               </div>
               <div className="flex items-center gap-4 bg-white/5 p-6 rounded-2xl backdrop-blur-sm border border-white/10">
                 <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">

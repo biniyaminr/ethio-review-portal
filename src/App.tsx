@@ -8,6 +8,7 @@ import { WriteReview } from './pages/WriteReview';
 import { SearchResults } from './pages/SearchResults';
 import { Categories } from './pages/Categories';
 import { UserDashboard } from './pages/UserDashboard';
+import { ClaimBusiness } from './pages/ClaimBusiness';
 import './lib/i18n';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
       <Route path="/categories/:category" element={<SearchResults />} />
       <Route path="/search" element={<SearchResults />} />
       <Route path="/dashboard" element={<UserDashboard />} />
+      <Route path="/claim-business" element={<ClaimBusiness />} />
     </Routes>
   );
 }
