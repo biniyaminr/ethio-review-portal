@@ -1,45 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Star, LogOut, Edit2, Calendar, Mail, User } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const mockUser = {
-  name: 'Abebe Kebede',
-  email: 'abebe.kebede@example.com',
-  joinDate: 'January 12, 2025',
-  initials: 'AK',
-};
-
-const userReviews = [
-  {
-    id: 1,
-    businessName: 'Commercial Bank of Ethiopia',
-    businessId: 'commercial-bank-of-ethiopia',
-    rating: 5,
-    date: 'March 28, 2026',
-    reviewText:
-      'The CBE mobile app has completely changed how I manage my finances. Transfers are instant, the UI is clean, and the 24/7 support team actually picks up the phone. Very impressed.',
-  },
-  {
-    id: 2,
-    businessName: 'Tomoca Coffee',
-    businessId: 'tomoca-coffee',
-    rating: 5,
-    date: 'February 14, 2026',
-    reviewText:
-      'Tomoca remains unbeatable. The roast quality and the atmosphere in Piassa are one-of-a-kind. Been coming here for years and it never disappoints. A true Addis institution.',
-  },
-  {
-    id: 3,
-    businessName: 'Sunshine Real Estate',
-    businessId: 'sunshine-real-estate',
-    rating: 3,
-    date: 'January 5, 2026',
-    reviewText:
-      'The project handover was two months late with no proactive communication from the team. The build quality is good, but the customer service experience needs serious improvement.',
-  },
-];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function StarRow({ rating }: { rating: number }) {
@@ -69,7 +31,11 @@ function RatingPill({ rating }: { rating: number }) {
 }
 
 // ─── Review Card ─────────────────────────────────────────────────────────────
-function UserReviewCard({ review }: { review: (typeof userReviews)[0] }) {
+function UserReviewCard({ review }: { review: any }) {
+  const businessName = review.businesses?.name || 'Unknown Business';
+  const businessId = review.business_id;
+  const date = new Date(review.created_at).toLocaleDateString();
+
   return (
     <article className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
       {/* Business name + date */}
@@ -79,13 +45,13 @@ function UserReviewCard({ review }: { review: (typeof userReviews)[0] }) {
             Your review of
           </p>
           <Link
-            to={`/business/${review.businessId}`}
+            to={`/business/${businessId}`}
             className="font-bold text-gray-900 hover:text-green-700 transition-colors text-base leading-tight"
           >
-            {review.businessName}
+            {businessName}
           </Link>
         </div>
-        <time className="text-xs text-gray-400 flex-shrink-0 mt-1">{review.date}</time>
+        <time className="text-xs text-gray-400 flex-shrink-0 mt-1">{date}</time>
       </div>
 
       {/* Rating */}
@@ -95,7 +61,7 @@ function UserReviewCard({ review }: { review: (typeof userReviews)[0] }) {
       </div>
 
       {/* Review text */}
-      <p className="text-sm text-gray-600 leading-relaxed">{review.reviewText}</p>
+      <p className="text-sm text-gray-600 leading-relaxed">{review.comment || review.content}</p>
 
       {/* Actions */}
       <div className="mt-4 flex gap-3 border-t border-gray-100 pt-3">
@@ -104,7 +70,7 @@ function UserReviewCard({ review }: { review: (typeof userReviews)[0] }) {
           Edit review
         </button>
         <Link
-          to={`/business/${review.businessId}`}
+          to={`/business/${businessId}`}
           className="text-xs text-gray-400 hover:text-green-600 flex items-center gap-1 transition-colors"
         >
           <Star className="w-3 h-3" />
@@ -119,10 +85,76 @@ function UserReviewCard({ review }: { review: (typeof userReviews)[0] }) {
 export function UserDashboard() {
   const navigate = useNavigate();
 
+  const [user, setUser] = useState<any>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !authUser) {
+          navigate('/login');
+          return;
+        }
+        
+        setUser(authUser);
+
+        const { data: reviewsData, error: reviewsError } = await supabase
+          .from('reviews')
+          .select('*, businesses(name)')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false });
+
+        if (reviewsError) throw reviewsError;
+        
+        setReviews(reviewsData || []);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load dashboard data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [navigate]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate('/');
+    navigate('/login');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
+        <div className="text-center text-gray-500">
+          <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          Loading dashboard...
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
+        <p className="text-red-500 mb-4">{error || 'Could not load dashboard'}</p>
+        <button onClick={() => navigate('/')} className="text-green-600 underline font-semibold">
+          Return Home
+        </button>
+      </div>
+    );
+  }
+
+  const email = user.email || '';
+  const name = user.user_metadata?.full_name || email.split('@')[0] || 'User';
+  const initials = name.substring(0, 2).toUpperCase();
+  const joinDate = new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const avgRating = reviews.length > 0 
+    ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
+    : '0.0';
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -133,9 +165,9 @@ export function UserDashboard() {
             Trust<span className="text-gray-900">Ethio</span>
           </Link>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500 hidden sm:block">{mockUser.email}</span>
+            <span className="text-sm text-gray-500 hidden sm:block">{email}</span>
             <div className="w-8 h-8 rounded-full bg-green-600 text-white font-bold text-sm flex items-center justify-center select-none">
-              {mockUser.initials}
+              {initials}
             </div>
           </div>
         </div>
@@ -146,7 +178,7 @@ export function UserDashboard() {
         <div className="mb-6">
           <h1 className="text-2xl font-extrabold text-gray-900">My Dashboard</h1>
           <p className="text-sm text-gray-400 mt-1">
-            Welcome back, {mockUser.name.split(' ')[0]} 👋
+            Welcome back, {name.split(' ')[0]} 👋
           </p>
         </div>
 
@@ -159,23 +191,21 @@ export function UserDashboard() {
             <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm text-center">
               {/* Avatar */}
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-green-700 text-white font-extrabold text-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-600/20 select-none">
-                {mockUser.initials}
+                {initials}
               </div>
 
-              <h2 className="font-bold text-gray-900 text-lg leading-tight">{mockUser.name}</h2>
-              <p className="text-sm text-gray-400 mt-0.5 truncate">{mockUser.email}</p>
+              <h2 className="font-bold text-gray-900 text-lg leading-tight">{name}</h2>
+              <p className="text-sm text-gray-400 mt-0.5 truncate">{email}</p>
 
               {/* Stats strip */}
               <div className="mt-4 bg-gray-50 rounded-xl p-3 flex justify-around text-center">
                 <div>
-                  <p className="text-xl font-extrabold text-gray-900">{userReviews.length}</p>
+                  <p className="text-xl font-extrabold text-gray-900">{reviews.length}</p>
                   <p className="text-xs text-gray-400">Reviews</p>
                 </div>
                 <div className="border-l border-gray-200" />
                 <div>
-                  <p className="text-xl font-extrabold text-green-600">
-                    {(userReviews.reduce((s, r) => s + r.rating, 0) / userReviews.length).toFixed(1)}
-                  </p>
+                  <p className="text-xl font-extrabold text-green-600">{avgRating}</p>
                   <p className="text-xs text-gray-400">Avg. Rating</p>
                 </div>
               </div>
@@ -188,11 +218,11 @@ export function UserDashboard() {
               </h3>
               <div className="flex items-start gap-2.5 text-sm text-gray-700">
                 <Mail className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span className="break-all">{mockUser.email}</span>
+                <span className="break-all">{email}</span>
               </div>
               <div className="flex items-center gap-2.5 text-sm text-gray-700">
                 <Calendar className="w-4 h-4 text-green-500 flex-shrink-0" />
-                <span>Joined {mockUser.joinDate}</span>
+                <span>Joined {joinDate}</span>
               </div>
               <div className="flex items-center gap-2.5 text-sm text-gray-700">
                 <User className="w-4 h-4 text-green-500 flex-shrink-0" />
@@ -227,7 +257,7 @@ export function UserDashboard() {
               <h2 className="text-lg font-bold text-gray-900">
                 My Reviews{' '}
                 <span className="text-gray-400 font-normal text-base">
-                  ({userReviews.length})
+                  ({reviews.length})
                 </span>
               </h2>
               <Link
@@ -238,10 +268,10 @@ export function UserDashboard() {
               </Link>
             </div>
 
-            {userReviews.length === 0 ? (
+            {reviews.length === 0 ? (
               <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
                 <p className="text-4xl mb-3">✍️</p>
-                <p className="font-bold text-gray-800 text-lg mb-1">No reviews yet</p>
+                <p className="font-bold text-gray-800 text-lg mb-1">You haven't written any reviews yet!</p>
                 <p className="text-sm text-gray-400 mb-5">
                   Share your experience and help others in Ethiopia make informed decisions.
                 </p>
@@ -253,7 +283,7 @@ export function UserDashboard() {
                 </Link>
               </div>
             ) : (
-              userReviews.map((review) => (
+              reviews.map((review) => (
                 <UserReviewCard key={review.id} review={review} />
               ))
             )}
