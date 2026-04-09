@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Coffee, Landmark, Building, ShoppingBag, Star } from 'lucide-react';
 import { Navbar, Hero } from '../components/Navigation';
 import { BusinessCard, CategoryItem, ReviewCard } from '../components/Business';
-import { BusinessProfile } from '../components/BusinessProfile';
 import { MOCK_REVIEWS } from '../data/mock';
 import { Business } from '../types';
 import { supabase } from '../lib/supabaseClient';
@@ -19,7 +18,6 @@ const categoryData = [
 
 export const Home = () => {
   const { t } = useTranslation();
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,26 +38,11 @@ export const Home = () => {
     fetchBusinesses();
   }, []);
 
-  if (selectedBusiness) {
-    const businessReviews = MOCK_REVIEWS.filter(r => r.businessId === selectedBusiness.id);
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Toaster position="top-center" />
-        <Navbar />
-        <BusinessProfile 
-          business={selectedBusiness} 
-          reviews={businessReviews} 
-          onBack={() => setSelectedBusiness(null)} 
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 font-sans selection:bg-green-100 selection:text-green-900">
       <Toaster position="top-center" />
       <Navbar />
-      
+
       <main>
         <Hero />
 
@@ -101,9 +84,9 @@ export const Home = () => {
                 </div>
               ) : (
                 businesses.map((business) => (
-                  <div key={business.id} onClick={() => setSelectedBusiness(business)}>
+                  <Link to={`/business/${business.id}`} key={business.id} className="block group">
                     <BusinessCard business={business} />
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
@@ -130,27 +113,27 @@ export const Home = () => {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="bg-gray-900 rounded-[2rem] overflow-hidden relative">
             <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none">
-                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M0 100 C 20 0 50 0 100 100" fill="white" />
-                </svg>
+              <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <path d="M0 100 C 20 0 50 0 100 100" fill="white" />
+              </svg>
             </div>
             <div className="relative z-10 p-8 md:p-16 flex flex-col md:flex-row items-center justify-between gap-8">
-                <div className="max-w-xl">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Are you a business owner?</h2>
-                    <p className="text-gray-400 text-lg mb-8">Claim your profile to engage with customers, respond to reviews, and build your reputation in the Ethiopian market.</p>
-                    <button className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-700 transition-shadow shadow-lg shadow-green-600/20">
-                        {t('claim_business')}
-                    </button>
+              <div className="max-w-xl">
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Are you a business owner?</h2>
+                <p className="text-gray-400 text-lg mb-8">Claim your profile to engage with customers, respond to reviews, and build your reputation in the Ethiopian market.</p>
+                <button className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-700 transition-shadow shadow-lg shadow-green-600/20">
+                  {t('claim_business')}
+                </button>
+              </div>
+              <div className="flex items-center gap-4 bg-white/5 p-6 rounded-2xl backdrop-blur-sm border border-white/10">
+                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+                  <Star className="text-green-500 w-8 h-8 fill-current" />
                 </div>
-                <div className="flex items-center gap-4 bg-white/5 p-6 rounded-2xl backdrop-blur-sm border border-white/10">
-                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
-                        <Star className="text-green-500 w-8 h-8 fill-current" />
-                    </div>
-                    <div>
-                        <div className="text-2xl font-bold text-white">Trust Score 4.9</div>
-                        <div className="text-gray-400">Average claimed business rating</div>
-                    </div>
+                <div>
+                  <div className="text-2xl font-bold text-white">Trust Score 4.9</div>
+                  <div className="text-gray-400">Average claimed business rating</div>
                 </div>
+              </div>
             </div>
           </div>
         </section>
@@ -198,9 +181,9 @@ export const Home = () => {
           <div className="pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-500">© 2024 Trust Ethio. All rights reserved.</p>
             <div className="flex gap-6">
-                <button className="text-gray-400 hover:text-green-600 transition-colors">Facebook</button>
-                <button className="text-gray-400 hover:text-green-600 transition-colors">Twitter</button>
-                <button className="text-gray-400 hover:text-green-600 transition-colors">Instagram</button>
+              <button className="text-gray-400 hover:text-green-600 transition-colors">Facebook</button>
+              <button className="text-gray-400 hover:text-green-600 transition-colors">Twitter</button>
+              <button className="text-gray-400 hover:text-green-600 transition-colors">Instagram</button>
             </div>
           </div>
         </div>
