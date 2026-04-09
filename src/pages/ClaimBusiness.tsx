@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
+import { supabase } from '../lib/supabaseClient';
 
 export function ClaimBusiness() {
   const [formData, setFormData] = useState({
@@ -12,27 +13,55 @@ export function ClaimBusiness() {
     companyName: '',
     websiteUrl: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Claim Business Form Data:', formData);
-    toast.success('Request received!', {
-      description: 'Our team will contact you shortly to verify your business.',
-    });
-    // Reset form after successful submission
-    setFormData({
-      firstName: '',
-      lastName: '',
-      businessEmail: '',
-      phoneNumber: '',
-      companyName: '',
-      websiteUrl: '',
-    });
+    setLoading(true);
+    setError(null);
+
+    // Save email for success message before clearing form
+    const submittedEmail = formData.businessEmail;
+
+    try {
+      const { error: submitError } = await supabase.from('business_leads').insert([
+        {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.businessEmail,
+          phone_number: formData.phoneNumber,
+          company_name: formData.companyName,
+          website_url: formData.websiteUrl,
+        }
+      ]);
+
+      if (submitError) throw submitError;
+
+      setSuccess(true);
+      toast.success('Request received!', {
+        description: 'Our team will contact you shortly to verify your business.',
+      });
+      // Optionally reset form
+      setFormData({
+        firstName: '',
+        lastName: '',
+        businessEmail: submittedEmail,
+        phoneNumber: '',
+        companyName: '',
+        websiteUrl: '',
+      });
+    } catch (err: any) {
+      setError(err.message || 'An error occurred submitting your request.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -95,12 +124,33 @@ export function ClaimBusiness() {
       {/* ── Right Column: The Form ── */}
       <div className="flex-1 bg-green-50 p-8 md:p-16 flex items-center justify-center text-gray-900 border-l border-green-800/20 shadow-2xl">
         <div className="w-full max-w-lg bg-white rounded-3xl p-8 shadow-xl border border-gray-100">
-          <div className="mb-8 text-center md:text-left">
-            <h2 className="text-2xl font-bold mb-2">Claim your free profile</h2>
-            <p className="text-sm text-gray-500">Takes less than 2 minutes to submit your details.</p>
-          </div>
+          {success ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl font-bold mb-3">Request Received!</h2>
+              <p className="text-gray-600 mb-8 max-w-sm mx-auto leading-relaxed">
+                Our team will verify your business and contact you shortly at <span className="font-semibold text-gray-900">{formData.businessEmail}</span>.
+              </p>
+              <Link to="/" className="inline-flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white font-bold px-6 py-3 rounded-xl transition-colors shadow">
+                Back to Homepage
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="mb-8 text-center md:text-left">
+                <h2 className="text-2xl font-bold mb-2">Claim your free profile</h2>
+                <p className="text-sm text-gray-500">Takes less than 2 minutes to submit your details.</p>
+              </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-medium">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
@@ -196,13 +246,27 @@ export function ClaimBusiness() {
 
             {/* Submit */}
             <button
-              type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-green-600/20"
+               type="submit"
+               disabled={loading}
+               className={`w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-green-600/20 ${
+                 loading ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+               }`}
             >
-              <Building className="w-5 h-5" />
-              Claim My Business
+              {loading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Building className="w-5 h-5" />
+                  Claim My Business
+                </>
+              )}
             </button>
           </form>
+          </>
+          )}
         </div>
       </div>
     </div>
