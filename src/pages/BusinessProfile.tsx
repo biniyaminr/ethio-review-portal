@@ -154,7 +154,11 @@ export function BusinessProfile() {
   }
 
   // Derive rating & counts or use from DB if available
-  const overallRating = business.rating || 0;
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+    : 0;
+  
+  const overallRating = averageRating || business.rating || 0;
   const reviewCount = business.reviewCount || reviews.length;
 
   return (
