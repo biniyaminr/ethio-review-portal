@@ -1,107 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Star, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const ALL_BUSINESSES = [
-  {
-    id: 'commercial-bank-of-ethiopia',
-    name: 'Commercial Bank of Ethiopia',
-    category: 'banks',
-    categoryLabel: 'Banking & Finance',
-    overallRating: 4.1,
-    totalReviews: 1284,
-    description:
-      "Ethiopia's largest commercial bank serving millions of customers across 1,800+ branches nationwide.",
-    location: 'Bole Road, Addis Ababa',
-    verified: true,
-  },
-  {
-    id: 'awash-bank',
-    name: 'Awash Bank',
-    category: 'banks',
-    categoryLabel: 'Banking & Finance',
-    overallRating: 4.4,
-    totalReviews: 876,
-    description:
-      'A leading private bank in Ethiopia known for innovative digital banking and swift customer service.',
-    location: 'Kirkos, Addis Ababa',
-    verified: true,
-  },
-  {
-    id: 'tomoca-coffee',
-    name: 'Tomoca Coffee',
-    category: 'cafes',
-    categoryLabel: 'Cafes & Coffee',
-    overallRating: 4.8,
-    totalReviews: 2103,
-    description:
-      'An Addis Ababa institution since 1953 — beloved for its rich, slow-roasted Ethiopian espresso.',
-    location: 'Piassa, Addis Ababa',
-    verified: true,
-  },
-  {
-    id: 'kaldi-coffee',
-    name: "Kaldi's Coffee",
-    category: 'cafes',
-    categoryLabel: 'Cafes & Coffee',
-    overallRating: 4.5,
-    totalReviews: 1567,
-    description:
-      "Ethiopia's largest specialty coffee chain with a modern atmosphere and carefully sourced single-origin beans.",
-    location: 'Bole, Addis Ababa',
-    verified: false,
-  },
-  {
-    id: 'sunshine-real-estate',
-    name: 'Sunshine Real Estate',
-    category: 'real-estate',
-    categoryLabel: 'Real Estate',
-    overallRating: 3.9,
-    totalReviews: 342,
-    description:
-      'A trusted property developer with a portfolio of over 15,000 residential units across Addis Ababa.',
-    location: 'CMC, Addis Ababa',
-    verified: true,
-  },
-  {
-    id: 'ethio-real-estate',
-    name: 'Ethio Real Estate',
-    category: 'real-estate',
-    categoryLabel: 'Real Estate',
-    overallRating: 3.6,
-    totalReviews: 217,
-    description:
-      'Residential and commercial property sales and leasing services across major Ethiopian cities.',
-    location: 'Sarbet, Addis Ababa',
-    verified: false,
-  },
-  {
-    id: 'habesha-cultural-dress',
-    name: 'Habesha Cultural Dress',
-    category: 'traditional-dress',
-    categoryLabel: 'Traditional Dress',
-    overallRating: 4.7,
-    totalReviews: 589,
-    description:
-      'Handwoven Habesha kemis and other traditional Ethiopian garments made by skilled local artisans.',
-    location: 'Merkato, Addis Ababa',
-    verified: true,
-  },
-  {
-    id: 'ethiopian-heritage-fashion',
-    name: 'Ethiopian Heritage Fashion',
-    category: 'traditional-dress',
-    categoryLabel: 'Traditional Dress',
-    overallRating: 4.3,
-    totalReviews: 411,
-    description:
-      'Modern takes on traditional Ethiopian dress combining age-old weaving techniques with contemporary cuts.',
-    location: '4 Kilo, Addis Ababa',
-    verified: false,
-  },
-];
-
+// ─── Constants ────────────────────────────────────────────────────────────────
 const ALL_CATEGORIES = [
   { slug: 'banks', label: 'Banking & Finance' },
   { slug: 'cafes', label: 'Cafes & Coffee' },
@@ -151,13 +53,17 @@ function RatingPill({ rating }: { rating: number }) {
     <span
       className={`inline-flex items-center justify-center w-10 h-8 rounded-lg text-white text-sm font-bold ${bg}`}
     >
-      {rating.toFixed(1)}
+      {Number(rating).toFixed(1)}
     </span>
   );
 }
 
 // ─── Business Card ────────────────────────────────────────────────────────────
-function BusinessCard({ business }: { business: (typeof ALL_BUSINESSES)[0] }) {
+function BusinessCard({ business }: { business: any }) {
+  const rating = business.rating || business.overallRating || 0;
+  const reviews = business.reviewCount || business.totalReviews || 0;
+  const categoryLabel = ALL_CATEGORIES.find((c) => c.slug === business.category)?.label || business.category || 'Business';
+
   return (
     <Link
       to={`/business/${business.id}`}
@@ -166,7 +72,7 @@ function BusinessCard({ business }: { business: (typeof ALL_BUSINESSES)[0] }) {
     >
       {/* Avatar */}
       <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-green-50 text-green-700 font-bold flex items-center justify-center text-lg select-none border border-green-100">
-        {business.name[0]}
+        {business.name ? business.name[0] : '?'}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -194,15 +100,15 @@ function BusinessCard({ business }: { business: (typeof ALL_BUSINESSES)[0] }) {
 
         {/* Category + location */}
         <p className="text-xs text-gray-400 mb-2">
-          {business.categoryLabel} · {business.location}
+          {categoryLabel} · {business.location || 'Ethiopia'}
         </p>
 
         {/* Rating row */}
         <div className="flex items-center gap-2 mb-3">
-          <RatingPill rating={business.overallRating} />
-          <StarRow rating={business.overallRating} />
+          <RatingPill rating={rating} />
+          <StarRow rating={rating} />
           <span className="text-xs text-gray-400">
-            {business.totalReviews.toLocaleString()} reviews
+            {reviews.toLocaleString()} reviews
           </span>
         </div>
 
@@ -293,12 +199,11 @@ function FilterSidebar({
         <ul className="space-y-1">
           {ALL_CATEGORIES.map((cat) => {
             const checked = selectedCategories.includes(cat.slug);
-            const count = ALL_BUSINESSES.filter((b) => b.category === cat.slug).length;
             return (
               <li key={cat.slug}>
                 <label
                   htmlFor={`filter-${cat.slug}`}
-                  className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm ${
+                  className={`flex flex-1 w-full items-center gap-2.5 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm ${
                     checked
                       ? 'bg-green-50 text-green-800'
                       : 'text-gray-700 hover:bg-gray-50'
@@ -312,7 +217,6 @@ function FilterSidebar({
                     className="w-3.5 h-3.5 accent-green-600 rounded"
                   />
                   <span className="flex-1">{cat.label}</span>
-                  <span className="text-xs text-gray-400">{count}</span>
                 </label>
               </li>
             );
@@ -354,11 +258,48 @@ export function SearchResults() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
 
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     category ? [category] : []
   );
   const [sortBy, setSortBy] = useState('rating-desc');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        let queryBuilder = supabase.from('businesses').select('*');
+
+        if (category) {
+          queryBuilder = queryBuilder.ilike('category', category);
+        } else if (query) {
+          queryBuilder = queryBuilder.ilike('name', `%${query}%`);
+        }
+
+        const { data, error: fetchError } = await queryBuilder;
+
+        if (fetchError) throw fetchError;
+        setResults(data || []);
+      } catch (err: any) {
+        setError(err.message || 'Error loading search results.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+    
+    // Sync local selected filters if routing to category explicitly
+    if (category) {
+      setSelectedCategories((prev) => prev.includes(category) ? prev : [...prev, category]);
+    }
+  }, [category, query]);
+
 
   const toggleCategory = (slug: string) => {
     setSelectedCategories((prev) =>
@@ -381,36 +322,30 @@ export function SearchResults() {
     return 'All Businesses';
   }, [category, query]);
 
-  const results = useMemo(() => {
-    let list = [...ALL_BUSINESSES];
+  const filteredAndSortedResults = useMemo(() => {
+    let list = [...results];
 
-    // Query filter
-    if (query) {
-      const q = query.toLowerCase();
-      list = list.filter(
-        (b) =>
-          b.name.toLowerCase().includes(q) ||
-          b.description.toLowerCase().includes(q) ||
-          b.categoryLabel.toLowerCase().includes(q)
-      );
-    }
-
-    // Category filter
+    // Client-side Category filtering from Sidebar
     if (selectedCategories.length > 0) {
       list = list.filter((b) => selectedCategories.includes(b.category));
     }
 
     // Sort
     list.sort((a, b) => {
-      if (sortBy === 'rating-desc') return b.overallRating - a.overallRating;
-      if (sortBy === 'rating-asc') return a.overallRating - b.overallRating;
-      if (sortBy === 'reviews-desc') return b.totalReviews - a.totalReviews;
+      const aRating = a.rating || a.overallRating || 0;
+      const bRating = b.rating || b.overallRating || 0;
+      const aReviews = a.reviewCount || a.totalReviews || 0;
+      const bReviews = b.reviewCount || b.totalReviews || 0;
+      
+      if (sortBy === 'rating-desc') return bRating - aRating;
+      if (sortBy === 'rating-asc') return aRating - bRating;
+      if (sortBy === 'reviews-desc') return bReviews - aReviews;
       if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
       return 0;
     });
 
     return list;
-  }, [query, selectedCategories, sortBy]);
+  }, [results, selectedCategories, sortBy]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -432,11 +367,7 @@ export function SearchResults() {
                 stroke="currentColor"
                 strokeWidth={2}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
                 type="search"
@@ -484,7 +415,7 @@ export function SearchResults() {
             </div>
             <h1 className="text-2xl font-extrabold text-gray-900">{pageTitle}</h1>
             <p className="text-sm text-gray-400 mt-1">
-              {results.length} {results.length === 1 ? 'business' : 'businesses'} found
+              {filteredAndSortedResults.length} {filteredAndSortedResults.length === 1 ? 'business' : 'businesses'} found
             </p>
           </div>
 
@@ -516,7 +447,16 @@ export function SearchResults() {
 
           {/* ── Results Feed ── */}
           <section className="lg:col-span-3 space-y-4">
-            {results.length === 0 ? (
+            {loading ? (
+              <div className="bg-white border border-gray-200 rounded-2xl p-12 flex flex-col items-center justify-center text-gray-500 shadow-sm">
+                <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p>Loading businesses...</p>
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 text-red-600 text-center rounded-2xl border border-red-100 p-8">
+                {error}
+              </div>
+            ) : filteredAndSortedResults.length === 0 ? (
               <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
                 <p className="text-4xl mb-3">🔍</p>
                 <p className="font-bold text-gray-800 text-lg mb-1">No results found</p>
@@ -531,7 +471,7 @@ export function SearchResults() {
                 </button>
               </div>
             ) : (
-              results.map((business) => (
+              filteredAndSortedResults.map((business) => (
                 <BusinessCard key={business.id} business={business} />
               ))
             )}
