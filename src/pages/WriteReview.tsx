@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Star } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 // ─── Mock business name (swap for a real lookup once data layer is ready) ────
 const MOCK_BUSINESS_NAME = 'Commercial Bank of Ethiopia';
@@ -70,7 +71,7 @@ function StarRater({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export const WriteReview = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: businessId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [rating, setRating] = useState(0);
@@ -78,10 +79,11 @@ export const WriteReview = () => {
   const [content, setContent] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const businessPath = `/business/${id ?? 'commercial-bank-of-ethiopia'}`;
+  const businessPath = `/business/${businessId ?? 'commercial-bank-of-ethiopia'}`;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
@@ -94,16 +96,46 @@ export const WriteReview = () => {
       return;
     }
 
+    if (!businessId) {
+      setError('Business ID is missing or invalid.');
+      return;
+    }
+
     setError('');
+    setLoading(true);
 
-    // Mock submit — log to console, show success state, then redirect
-    console.log('[WriteReview] Submitted:', { rating, title, content });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    setSubmitted(true);
+      if (!user) {
+        setError('You must be logged in to post a review.');
+        navigate('/login');
+        return;
+      }
 
-    setTimeout(() => {
-      navigate(businessPath);
-    }, 2200);
+      // We use the fields requested by the user. If your db schema is different (e.g. user_name instead of reviewer_name), adjust accordingly.
+      const { error: insertError } = await supabase.from('reviews').insert([
+        {
+          business_id: businessId,
+          user_id: user.id,
+          reviewer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous',
+          rating: rating,
+          content: content
+        }
+      ]);
+
+      if (insertError) throw insertError;
+
+      setSubmitted(true);
+
+      setTimeout(() => {
+        navigate(businessPath);
+      }, 2200);
+    } catch (err: any) {
+      setError(err.message || 'Failed to post review. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Success Screen ──────────────────────────────────────────────────────────
@@ -253,10 +285,20 @@ export const WriteReview = () => {
             <button
               id="post-review-btn"
               type="submit"
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-xl shadow-md shadow-green-600/20 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              disabled={loading}
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 bg-green-600 hover:bg-green-700 disabled:opacity-75 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl shadow-md shadow-green-600/20 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
             >
-              <Star className="w-4 h-4 fill-current" />
-              Post Review
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Posting...
+                </>
+              ) : (
+                <>
+                  <Star className="w-4 h-4 fill-current" />
+                  Post Review
+                </>
+              )}
             </button>
 
             <p className="text-center text-xs text-gray-400">
