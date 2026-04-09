@@ -9,6 +9,7 @@ import { SearchResults } from './pages/SearchResults';
 import { Categories } from './pages/Categories';
 import { UserDashboard } from './pages/UserDashboard';
 import { ClaimBusiness } from './pages/ClaimBusiness';
+import { AdminDashboard } from './pages/AdminDashboard';
 import './lib/i18n';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
       <Route path="/search" element={<SearchResults />} />
       <Route path="/dashboard" element={<UserDashboard />} />
       <Route path="/claim-business" element={<ClaimBusiness />} />
+      <Route path="/admin" element={<AdminDashboard />} />
     </Routes>
   );
 }
